@@ -1,74 +1,50 @@
 # Deafen
 
-A tiny macOS menu bar app that **deafens** the apps you choose, like Discord's deafen button for Slack (or any other app). Press a global shortcut and the app goes silent. Press it again to hear it.
+A small macOS menu bar app that **deafens** the apps you choose, like Discord's deafen button for Slack or any other app. Press a shortcut and the app goes silent; press it again to hear it. Everything else keeps playing.
 
-- **Any app.** Pick from running apps or the Applications folder. If Slack, Microsoft Teams or Discord is installed, it's suggested for one-click adding.
-- **A shortcut you choose.** Record any key combination with ⌘, ⌃ or ⌥, or a function key on its own. The default is **⌃⌥⌘D**.
-- **Only the chosen apps go quiet.** Your other audio keeps playing.
-- **Follows the app.** Helper processes (Slack is an Electron app, and its sounds come from "Slack Helper") are silenced too. Processes that start playing sound later, and output device changes (e.g. plugging in headphones), are picked up automatically.
-- **Small extras:** a sound when you toggle, and launch at login.
+## Install
 
-## Requirements
+1. Download **Deafen-x.y.dmg** from the [latest release](https://github.com/rkoponen1/Deafen/releases/latest).
+2. Open it and drag **Deafen** into **Applications**.
+3. Open Deafen. A headphones icon appears in the menu bar (there's no Dock icon).
 
-- macOS 27 or later (the project's deployment target; the audio tap APIs themselves exist since macOS 14.2)
-- Xcode 27 or later to build
+Requires macOS 27 or later.
 
-## Build and run
+## Use
 
-1. Clone the repo and open `Deafen.xcodeproj` in Xcode.
-2. Select the **Deafen** target → **Signing & Capabilities** and choose your own **Team**. Change the bundle identifier (`rk.Deafen`) if Xcode asks for a unique one.
-3. Build and run (⌘R). A speaker icon appears in the menu bar. The app has no Dock icon.
+1. Click the headphones icon and add the apps to silence. Installed Slack, Microsoft Teams and Discord are offered as one-click suggestions; anything else can be added with **Add App…**.
+2. Press **⌃⌥⌘D** (or click the round button) to deafen. The icon shows a slash while deafened.
+3. Press it again to undeafen.
 
-To keep it installed, archive a Release build (Product → Archive → Distribute App → Copy App), move `Deafen.app` into `/Applications` and turn on **Launch at login** from its menu.
+To change the shortcut, click it under **Settings** and press a new combination with ⌘, ⌃ or ⌥ (or a function key on its own). Turn on **Launch at login** to keep Deafen running.
 
-## Releasing
+The first time you deafen, macOS asks to let Deafen **record audio from other apps**. Allow it: Deafen silences an app by intercepting its audio. It never saves or sends any audio. While an app is deafened, macOS may show its recording indicator.
 
-`release.sh` archives the app, signs it with your Developer ID, notarizes and staples it, and packages it two ways in `build/release`: `Deafen-<version>.dmg` (a signed, notarized disk image with an Applications shortcut to drag the app onto) and `Deafen-<version>.zip`. With `--publish` it also tags `v<version>` and creates a GitHub release with both attached.
+## Troubleshooting
 
-One-time setup:
-
-1. Sign in to Xcode with your developer team's Apple ID and create a **Developer ID Application** certificate (Xcode → Settings → Accounts → Manage Certificates).
-2. Save notarization credentials to your keychain. It asks for an app-specific password from [appleid.apple.com](https://appleid.apple.com); nothing is stored in the repo.
-   ```bash
-   xcrun notarytool store-credentials deafen-notary --apple-id <your Apple ID> --team-id <team ID>
-   ```
-3. For `--publish`, install the [GitHub CLI](https://cli.github.com) and run `gh auth login`.
-
-Then:
-
-```bash
-./release.sh --publish
-```
-
-Raise **Version** (`MARKETING_VERSION`) in the project before each release; the script refuses to reuse an existing tag.
-
-## First use: allow audio access
-
-The first time you deafen an app, macOS asks to let Deafen **record audio from other apps**. Allow it. Silencing another app works by intercepting its audio, so this permission is required.
-
-You can change it later in **System Settings → Privacy & Security → Screen & System Audio Recording**. While an app is deafened, macOS may show its recording indicator in the menu bar. Deafen never saves or sends any audio; it just drops it.
+- **The app still makes sound:** check that Deafen is allowed under System Settings → Privacy & Security → **Screen & System Audio Recording**.
+- **"Already used by another app":** another app owns that shortcut. Pick a different one.
+- **The app isn't playing anything yet:** that's fine. Deafen silences it as soon as it makes a sound, including helper processes and after you switch output devices.
 
 ## How it works
 
-Deafen uses Core Audio [process taps](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps). It creates a private tap on the chosen app's audio processes with `muteBehavior = .muted`, which keeps their audio from reaching the speakers. The tap is attached to a private aggregate device that runs with an empty IOProc. Deafen also listens for changes to the system's process list and default output device, and rebuilds the tap when they change.
+Deafen creates a Core Audio [process tap](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) on the chosen apps' audio processes with `muteBehavior = .muted`, which keeps their audio from reaching the speakers. The global shortcut uses Carbon's `RegisterEventHotKey`, so it needs no Accessibility permission. The app runs outside the App Sandbox, so it can't be on the Mac App Store as is.
 
-The global shortcut uses Carbon's `RegisterEventHotKey`, so it works in every app without Accessibility permission.
+## Development
 
-| Folder | What's in it |
+Open `Deafen.xcodeproj` in Xcode 27 or later, choose your **Team** under the target's **Signing & Capabilities**, and press ⌘R. Run the tests with ⌘U.
+
+| Folder | Contents |
 | --- | --- |
-| `Deafen/Audio` | Core Audio taps: finding the apps' audio processes (`ProcessMatcher`) and silencing them (`AppMuter`, `MuteSession`) |
-| `Deafen/HotKey` | The shortcut model and global hotkey registration |
-| `Deafen/Model` | App state, saved preferences and the list of apps |
+| `Deafen/Audio` | Finding the apps' audio processes and silencing them |
+| `Deafen/HotKey` | The shortcut and global hotkey registration |
+| `Deafen/Model` | App state and saved preferences |
 | `Deafen/Views` | The menu bar panel |
 | `DeafenTests` | Unit tests (Swift Testing) |
 
-Run the tests with ⌘U in Xcode.
+### Releasing
 
-## Notes
-
-- **No App Sandbox.** The app runs outside the App Sandbox so audio taps work reliably, which means it can't be distributed through the Mac App Store as is.
-- **If your shortcut is taken,** another app already owns that combination, and Deafen tells you so. Pick a different one.
-- **When the target app isn't playing anything yet,** Deafen stays deafened and silences it as soon as it makes a sound.
+`./release.sh --publish` builds the app, signs it with Developer ID, notarizes the app and a DMG, and creates a GitHub release with the DMG and a zip. Raise the version in the project first; the script won't reuse a tag. Run `./release.sh --help` for the one-time setup (a Developer ID certificate and a `notarytool` keychain profile).
 
 ## License
 

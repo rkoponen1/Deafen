@@ -6,9 +6,10 @@
 #   ./release.sh --publish  also tag v<version> and create a GitHub release with both
 #
 # One-time setup:
-#   1. Sign in to Xcode with the Apple ID of your developer team, and create a
-#      "Developer ID Application" certificate (Xcode → Settings → Accounts →
-#      Manage Certificates).
+#   1. Create a "Developer ID Application" certificate (only the team's Account
+#      Holder can): Xcode → Settings → Accounts → your team → Manage
+#      Certificates, or developer.apple.com → Certificates with a signing
+#      request from Keychain Access → Certificate Assistant.
 #   2. Store notarization credentials in your keychain (asks for an
 #      app-specific password from appleid.apple.com; nothing is saved in the repo):
 #        xcrun notarytool store-credentials deafen-notary --apple-id <your Apple ID> --team-id <team ID>
@@ -35,7 +36,7 @@ PUBLISH=false
 for arg in "$@"; do
     case "$arg" in
         --publish) PUBLISH=true ;;
-        -h|--help) sed -n '2,20p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown option: $arg (see --help)" >&2; exit 2 ;;
     esac
 done
