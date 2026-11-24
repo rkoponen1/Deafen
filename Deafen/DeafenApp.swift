@@ -16,6 +16,7 @@ struct DeafenApp: App {
             MenuView(state: state)
         } label: {
             Image(systemName: state.isDeafened ? "headphones.slash" : "headphones")
+                .accessibilityLabel(state.isDeafened ? "Deafen, on" : "Deafen, off")
         }
         .menuBarExtraStyle(.window)
     }

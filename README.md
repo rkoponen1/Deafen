@@ -33,12 +33,15 @@ Deafen uses Core Audio [process taps](https://developer.apple.com/documentation/
 
 The global shortcut uses Carbon's `RegisterEventHotKey`, so it works in every app without Accessibility permission.
 
-| File | What it does |
+| Folder | What's in it |
 | --- | --- |
-| `Deafen/AudioMuter.swift` | Finds the apps' audio processes and silences them |
-| `Deafen/HotKey.swift` | Shortcut model and global hotkey registration |
-| `Deafen/AppState.swift` | Settings, persistence and on/off state |
-| `Deafen/MenuView.swift`, `Deafen/ShortcutRecorder.swift` | Menu bar panel and shortcut recorder |
+| `Deafen/Audio` | Core Audio taps: finding the apps' audio processes (`ProcessMatcher`) and silencing them (`AppMuter`, `MuteSession`) |
+| `Deafen/HotKey` | The shortcut model and global hotkey registration |
+| `Deafen/Model` | App state, saved preferences and the list of apps |
+| `Deafen/Views` | The menu bar panel |
+| `DeafenTests` | Unit tests (Swift Testing) |
+
+Run the tests with ⌘U in Xcode.
 
 ## Notes
 
