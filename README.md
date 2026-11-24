@@ -21,6 +21,27 @@ A tiny macOS menu bar app that **deafens** the apps you choose, like Discord's d
 
 To keep it installed, archive a Release build (Product → Archive → Distribute App → Copy App), move `Deafen.app` into `/Applications` and turn on **Launch at login** from its menu.
 
+## Releasing
+
+`release.sh` archives the app, signs it with your Developer ID, notarizes and staples it, and zips it into `build/release/Deafen-<version>.zip`. With `--publish` it also tags `v<version>` and creates a GitHub release with the zip attached.
+
+One-time setup:
+
+1. Sign in to Xcode with your developer team's Apple ID and create a **Developer ID Application** certificate (Xcode → Settings → Accounts → Manage Certificates).
+2. Save notarization credentials to your keychain. It asks for an app-specific password from [appleid.apple.com](https://appleid.apple.com); nothing is stored in the repo.
+   ```bash
+   xcrun notarytool store-credentials deafen-notary --apple-id <your Apple ID> --team-id <team ID>
+   ```
+3. For `--publish`, install the [GitHub CLI](https://cli.github.com) and run `gh auth login`.
+
+Then:
+
+```bash
+./release.sh --publish
+```
+
+Raise **Version** (`MARKETING_VERSION`) in the project before each release; the script refuses to reuse an existing tag.
+
 ## First use: allow audio access
 
 The first time you deafen an app, macOS asks to let Deafen **record audio from other apps**. Allow it. Silencing another app works by intercepting its audio, so this permission is required.
