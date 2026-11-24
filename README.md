@@ -23,7 +23,7 @@ The first time you deafen, macOS asks to let Deafen **record audio from other ap
 ## Troubleshooting
 
 - **The app still makes sound:** check that Deafen is allowed under System Settings → Privacy & Security → **Screen & System Audio Recording**.
-- **"Already used by another app":** another app owns that shortcut. Pick a different one.
+- **"Already used by macOS or another app":** that shortcut is taken. Pick a different one. Some macOS shortcuts (⌘Space, ⌃⌘Q) can't be recorded or may never reach Deafen, because macOS handles them before the app sees them.
 - **The app isn't playing anything yet:** that's fine. Deafen silences it as soon as it makes a sound, including helper processes and after you switch output devices.
 
 ## How it works

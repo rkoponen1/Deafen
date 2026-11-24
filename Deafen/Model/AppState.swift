@@ -37,8 +37,8 @@ final class AppState {
 
     var shortcut: Shortcut? {
         didSet {
-            preferences.shortcut = shortcut
-            registerShortcut()
+            guard !isRevertingShortcut, !isRecordingShortcut, shortcut != oldValue else { return }
+            commitShortcut(replacing: oldValue)
         }
     }
 
@@ -53,6 +53,9 @@ final class AppState {
     private let preferences: Preferences
     private let muter: AppMuter
     private let hotKeys: HotKeyCenter
+    /// Set while a failed shortcut change is being rolled back, so the revert
+    /// doesn't try to register again.
+    private var isRevertingShortcut = false
 
     init(preferences: Preferences = Preferences(), muter: AppMuter = AppMuter(), hotKeys: HotKeyCenter = .shared) {
         self.preferences = preferences
@@ -145,6 +148,21 @@ final class AppState {
             shortcutError = nil
         } catch {
             shortcutError = error.localizedDescription
+        }
+    }
+
+    /// Applies a shortcut the user just recorded. If the system rejects it, the
+    /// previous shortcut keeps working and the failed one isn't saved.
+    private func commitShortcut(replacing previous: Shortcut?) {
+        do {
+            try hotKeys.register(shortcut)
+            shortcutError = nil
+            preferences.shortcut = shortcut
+        } catch {
+            shortcutError = error.localizedDescription
+            isRevertingShortcut = true
+            shortcut = previous
+            isRevertingShortcut = false
         }
     }
 

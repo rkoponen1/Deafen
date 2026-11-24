@@ -9,7 +9,7 @@ import Testing
 struct HotKeyErrorTests {
     @Test func takenShortcutNamesTheShortcut() {
         let message = HotKeyError.shortcutTaken("⌃⌥⌘D").errorDescription
-        #expect(message == "⌃⌥⌘D is already used by another app. Pick a different shortcut.")
+        #expect(message == "⌃⌥⌘D is already used by macOS or another app. Pick a different shortcut.")
     }
 
     @Test func handlerFailureIncludesStatus() {
