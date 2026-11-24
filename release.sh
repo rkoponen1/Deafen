@@ -58,8 +58,8 @@ TEAM_ID="${TEAM_ID:-$(setting DEVELOPMENT_TEAM)}"
 [[ -n "$VERSION" ]] || fail "Couldn't read MARKETING_VERSION from the project."
 [[ -n "$TEAM_ID" ]] || fail "No team set. Choose a Team under Signing & Capabilities, or set TEAM_ID."
 
-SIGNING_IDENTITY="$(security find-identity -v -p codesigning \
-    | awk -v team="($TEAM_ID)" '/Developer ID Application/ && index($0, team) { print $2; exit }')"
+IDENTITIES="$(security find-identity -v -p codesigning)"
+SIGNING_IDENTITY="$(awk -v team="($TEAM_ID)" '/Developer ID Application/ && index($0, team) { print $2; exit }' <<<"$IDENTITIES")"
 [[ -n "$SIGNING_IDENTITY" ]] \
     || fail "No Developer ID Application certificate for team $TEAM_ID in your keychain. Create one in Xcode → Settings → Accounts → Manage Certificates."
 xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1 \
@@ -118,8 +118,12 @@ xcodebuild -exportArchive \
 [[ -d "$APP" ]] || fail "Export didn't produce $APP"
 
 codesign --verify --deep --strict "$APP" || fail "Code signature check failed."
-codesign -dvv "$APP" 2>&1 | grep -q "Authority=Developer ID Application" \
-    || fail "The app isn't signed with a Developer ID certificate."
+# Capture first: piping into `grep -q` can kill codesign with SIGPIPE, which pipefail reports as a failure.
+SIGNATURE="$(codesign -dvv "$APP" 2>&1)"
+if [[ "$SIGNATURE" != *"Authority=Developer ID Application"* ]]; then
+    grep -E "Authority|TeamIdentifier|Signature" <<<"$SIGNATURE" >&2 || true
+    fail "The app isn't signed with a Developer ID certificate (signing details above)."
+fi
 
 # --- Notarize --------------------------------------------------------------
 
