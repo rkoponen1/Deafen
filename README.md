@@ -42,9 +42,7 @@ Open `Deafen.xcodeproj` in Xcode 27 or later, choose your **Team** under the tar
 | `Deafen/Views` | The menu bar panel |
 | `DeafenTests` | Unit tests (Swift Testing) |
 
-### Releasing
-
-`./release.sh --publish` builds the app, signs it with Developer ID, notarizes the app and a DMG, and creates a GitHub release with the DMG and a zip. Raise the version in the project first; the script won't reuse a tag. Run `./release.sh --help` for the one-time setup (a Developer ID certificate and a `notarytool` keychain profile).
+To publish a signed, notarized release, see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## License
 

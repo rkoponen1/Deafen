@@ -1,6 +1,7 @@
 #!/bin/bash
 #
 # Builds, signs with Developer ID, notarizes and zips Deafen.
+# Full guide: docs/RELEASING.md
 #
 #   ./release.sh            build notarized Deafen-<version>.dmg and .zip in build/release
 #   ./release.sh --publish  also tag v<version> and create a GitHub release with both
@@ -36,7 +37,7 @@ PUBLISH=false
 for arg in "$@"; do
     case "$arg" in
         --publish) PUBLISH=true ;;
-        -h|--help) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
         *) echo "Unknown option: $arg (see --help)" >&2; exit 2 ;;
     esac
 done
