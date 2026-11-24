@@ -37,7 +37,7 @@ struct MenuView: View {
     private var header: some View {
         HStack(spacing: 12) {
             Button(action: state.toggle) {
-                Image(systemName: state.isDeafened ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                Image(systemName: state.isDeafened ? "headphones.slash" : "headphones")
                     .font(.title2)
                     .frame(width: 44, height: 44)
                     .foregroundStyle(.white)

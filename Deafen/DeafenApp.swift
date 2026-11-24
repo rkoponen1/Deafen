@@ -15,7 +15,7 @@ struct DeafenApp: App {
         MenuBarExtra {
             MenuView(state: state)
         } label: {
-            Image(systemName: state.isDeafened ? "speaker.slash.fill" : "speaker.wave.2")
+            Image(systemName: state.isDeafened ? "headphones.slash" : "headphones")
         }
         .menuBarExtraStyle(.window)
     }
