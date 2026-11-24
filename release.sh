@@ -2,8 +2,8 @@
 #
 # Builds, signs with Developer ID, notarizes and zips Deafen.
 #
-#   ./release.sh            build a notarized build/release/Deafen-<version>.zip
-#   ./release.sh --publish  also tag v<version> and create a GitHub release
+#   ./release.sh            build notarized Deafen-<version>.dmg and .zip in build/release
+#   ./release.sh --publish  also tag v<version> and create a GitHub release with both
 #
 # One-time setup:
 #   1. Sign in to Xcode with the Apple ID of your developer team, and create a
@@ -58,8 +58,10 @@ TEAM_ID="${TEAM_ID:-$(setting DEVELOPMENT_TEAM)}"
 [[ -n "$VERSION" ]] || fail "Couldn't read MARKETING_VERSION from the project."
 [[ -n "$TEAM_ID" ]] || fail "No team set. Choose a Team under Signing & Capabilities, or set TEAM_ID."
 
-security find-identity -v -p codesigning | grep -q "Developer ID Application" \
-    || fail "No Developer ID Application certificate in your keychain. Create one in Xcode → Settings → Accounts → Manage Certificates."
+SIGNING_IDENTITY="$(security find-identity -v -p codesigning \
+    | awk -v team="($TEAM_ID)" '/Developer ID Application/ && index($0, team) { print $2; exit }')"
+[[ -n "$SIGNING_IDENTITY" ]] \
+    || fail "No Developer ID Application certificate for team $TEAM_ID in your keychain. Create one in Xcode → Settings → Accounts → Manage Certificates."
 xcrun notarytool history --keychain-profile "$NOTARY_PROFILE" >/dev/null 2>&1 \
     || fail "Notarization profile '$NOTARY_PROFILE' not found or not working. Run: xcrun notarytool store-credentials $NOTARY_PROFILE --apple-id <Apple ID> --team-id $TEAM_ID"
 
@@ -121,32 +123,56 @@ codesign -dvv "$APP" 2>&1 | grep -q "Authority=Developer ID Application" \
 
 # --- Notarize --------------------------------------------------------------
 
-step "Notarizing (usually takes a few minutes)"
+# Uploads a .zip or .dmg for notarization and waits; prints Apple's log on failure.
+notarize() {
+    local file="$1" result="$OUT/notary-result.json" status submission
+    xcrun notarytool submit "$file" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json >"$result" \
+        || true
+    status="$(plutil -extract status raw -o - "$result" 2>/dev/null || echo unknown)"
+    if [[ "$status" != "Accepted" ]]; then
+        submission="$(plutil -extract id raw -o - "$result" 2>/dev/null || true)"
+        echo "Notarization status: $status" >&2
+        if [[ -n "$submission" ]]; then
+            xcrun notarytool log "$submission" --keychain-profile "$NOTARY_PROFILE" >&2 || true
+        else
+            cat "$result" >&2
+        fi
+        fail "Notarization of $(basename "$file") failed."
+    fi
+}
+
+step "Notarizing the app (usually takes a few minutes)"
 UPLOAD_ZIP="$OUT/upload.zip"
 ditto -c -k --keepParent "$APP" "$UPLOAD_ZIP"
-RESULT="$OUT/notary-result.json"
-xcrun notarytool submit "$UPLOAD_ZIP" --keychain-profile "$NOTARY_PROFILE" --wait --output-format json >"$RESULT" \
-    || true
-STATUS="$(plutil -extract status raw -o - "$RESULT" 2>/dev/null || echo unknown)"
-if [[ "$STATUS" != "Accepted" ]]; then
-    SUBMISSION_ID="$(plutil -extract id raw -o - "$RESULT" 2>/dev/null || true)"
-    echo "Notarization status: $STATUS" >&2
-    if [[ -n "$SUBMISSION_ID" ]]; then
-        xcrun notarytool log "$SUBMISSION_ID" --keychain-profile "$NOTARY_PROFILE" >&2 || true
-    else
-        cat "$RESULT" >&2
-    fi
-    fail "Notarization failed."
-fi
+notarize "$UPLOAD_ZIP"
 rm -f "$UPLOAD_ZIP"
-
-step "Stapling the notarization ticket"
 xcrun stapler staple "$APP"
 spctl --assess --type execute "$APP" || fail "Gatekeeper rejected the notarized app."
 
 ZIP="$OUT/$APP_NAME-$VERSION.zip"
 ditto -c -k --keepParent "$APP" "$ZIP"
-echo "Ready: $ZIP"
+
+# --- Disk image ------------------------------------------------------------
+
+step "Building the disk image"
+DMG="$OUT/$APP_NAME-$VERSION.dmg"
+STAGING="$OUT/dmg"
+mkdir -p "$STAGING"
+ditto "$APP" "$STAGING/$APP_NAME.app"
+ln -s /Applications "$STAGING/Applications"
+hdiutil create -volname "$APP_NAME" -srcfolder "$STAGING" -fs HFS+ -format UDZO -ov -quiet "$DMG"
+rm -rf "$STAGING"
+codesign --sign "$SIGNING_IDENTITY" --timestamp "$DMG"
+
+step "Notarizing the disk image"
+notarize "$DMG"
+xcrun stapler staple "$DMG"
+spctl --assess --type open --context context:primary-signature "$DMG" \
+    || fail "Gatekeeper rejected the notarized disk image."
+
+echo "Ready:"
+echo "  $DMG"
+echo "  $ZIP"
 
 # --- Publish ---------------------------------------------------------------
 
@@ -154,7 +180,7 @@ if $PUBLISH; then
     step "Creating GitHub release $TAG"
     git tag "$TAG"
     git push --quiet origin "$TAG"
-    gh release create "$TAG" "$ZIP" --title "$APP_NAME $VERSION" --generate-notes --verify-tag
+    gh release create "$TAG" "$DMG" "$ZIP" --title "$APP_NAME $VERSION" --generate-notes --verify-tag
     echo "Published: $(gh release view "$TAG" --json url --jq .url)"
 else
     echo "Run again with --publish to create a GitHub release."

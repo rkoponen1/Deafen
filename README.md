@@ -23,7 +23,7 @@ To keep it installed, archive a Release build (Product → Archive → Distribut
 
 ## Releasing
 
-`release.sh` archives the app, signs it with your Developer ID, notarizes and staples it, and zips it into `build/release/Deafen-<version>.zip`. With `--publish` it also tags `v<version>` and creates a GitHub release with the zip attached.
+`release.sh` archives the app, signs it with your Developer ID, notarizes and staples it, and packages it two ways in `build/release`: `Deafen-<version>.dmg` (a signed, notarized disk image with an Applications shortcut to drag the app onto) and `Deafen-<version>.zip`. With `--publish` it also tags `v<version>` and creates a GitHub release with both attached.
 
 One-time setup:
 
