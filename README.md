@@ -30,10 +30,6 @@ The first time you deafen, macOS asks to let Deafen **record audio from other ap
 
 Deafen creates a Core Audio [process tap](https://developer.apple.com/documentation/coreaudio/capturing-system-audio-with-core-audio-taps) on the chosen apps' audio processes with `muteBehavior = .muted`, which keeps their audio from reaching the speakers. The global shortcut uses Carbon's `RegisterEventHotKey`, so it needs no Accessibility permission. The app runs outside the App Sandbox, so it can't be on the Mac App Store as is.
 
-## Development
-
-To publish a signed, notarized release, see [docs/RELEASING.md](docs/RELEASING.md).
-
 ## License
 
 [MIT](LICENSE)
