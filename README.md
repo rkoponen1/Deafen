@@ -12,7 +12,7 @@ Requires macOS 27 or later.
 
 ## Use
 
-1. Click the headphones icon and add the apps to silence. Installed Slack, Microsoft Teams and Discord are offered as one-click suggestions; anything else can be added with **Add App…**.
+1. Click the headphones icon and add the apps to silence. If Slack is installed, it's offered as a one-click suggestion; anything else can be added with **Add App…**.
 2. Press **⌃⌥⌘D** (or click the round button) to deafen. The icon shows a slash while deafened.
 3. Press it again to undeafen.
 
