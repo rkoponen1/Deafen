@@ -2,7 +2,7 @@
 
 A tiny macOS menu bar app that **deafens** the apps you choose, like Discord's deafen button for Slack (or any other app). Press a global shortcut and the app goes silent. Press it again to hear it.
 
-- **Any app.** Slack is selected by default. Add others from running apps or the Applications folder.
+- **Any app.** Pick from running apps or the Applications folder. If Slack, Microsoft Teams or Discord is installed, it's suggested for one-click adding.
 - **A shortcut you choose.** Record any key combination with ⌘, ⌃ or ⌥, or a function key on its own. The default is **⌃⌥⌘D**.
 - **Only the chosen apps go quiet.** Your other audio keeps playing.
 - **Follows the app.** Helper processes (Slack is an Electron app, and its sounds come from "Slack Helper") are silenced too. Processes that start playing sound later, and output device changes (e.g. plugging in headphones), are picked up automatically.

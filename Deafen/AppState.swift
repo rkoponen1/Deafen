@@ -12,7 +12,16 @@ struct TargetApp: Codable, Hashable, Identifiable {
     var name: String
     var id: String { bundleID }
 
-    static let slack = TargetApp(bundleID: "com.tinyspeck.slackmacgap", name: "Slack")
+    /// Chat apps offered as one-click suggestions while the list is empty.
+    static let suggestions = [
+        TargetApp(bundleID: "com.tinyspeck.slackmacgap", name: "Slack"),
+        TargetApp(bundleID: "com.microsoft.teams2", name: "Microsoft Teams"),
+        TargetApp(bundleID: "com.hnc.Discord", name: "Discord"),
+    ]
+
+    var isInstalled: Bool {
+        NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) != nil
+    }
 
     var icon: NSImage? {
         guard let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return nil }
@@ -69,7 +78,7 @@ final class AppState {
 
     init() {
         let defaults = UserDefaults.standard
-        targets = Self.load([TargetApp].self, forKey: Keys.targets) ?? [.slack]
+        targets = Self.load([TargetApp].self, forKey: Keys.targets) ?? []
         shortcut = defaults.object(forKey: Keys.shortcut) == nil
             ? .default
             : Self.load(Shortcut.self, forKey: Keys.shortcut)

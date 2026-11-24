@@ -62,6 +62,33 @@ struct MenuView: View {
         VStack(alignment: .leading, spacing: 8) {
             Text("Apps to deafen").font(.subheadline.weight(.semibold))
 
+            if state.targets.isEmpty {
+                Text("Add the apps you want to silence.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                let suggested = TargetApp.suggestions.filter(\.isInstalled)
+                if !suggested.isEmpty {
+                    HStack(spacing: 6) {
+                        Text("Suggested:").font(.caption).foregroundStyle(.secondary)
+                        ForEach(suggested) { app in
+                            Button {
+                                state.add(app)
+                            } label: {
+                                Label {
+                                    Text(app.name)
+                                } icon: {
+                                    if let icon = app.icon {
+                                        Image(nsImage: icon).resizable().frame(width: 14, height: 14)
+                                    }
+                                }
+                            }
+                            .controlSize(.small)
+                        }
+                    }
+                }
+            }
+
             ForEach(state.targets) { app in
                 HStack(spacing: 8) {
                     if let icon = app.icon {
@@ -70,6 +97,11 @@ struct MenuView: View {
                         Image(systemName: "app.dashed").frame(width: 20, height: 20)
                     }
                     Text(app.name)
+                    if !app.isInstalled {
+                        Text("Not installed")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
                     Spacer()
                     Button {
                         state.remove(app)
