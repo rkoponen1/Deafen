@@ -3,8 +3,16 @@
 # Builds, signs with Developer ID, notarizes and zips Deafen.
 # Full guide: docs/RELEASING.md
 #
-#   ./release.sh            build notarized Deafen-<version>.dmg and .zip in build/release
-#   ./release.sh --publish  also tag v<version> and create a GitHub release with both
+#   ./release.sh                  build notarized Deafen-<version>.dmg and .zip in
+#                                 build/release, using the project's current version
+#   ./release.sh --publish        raise the last version number (1.0 → 1.0.1), build,
+#                                 commit and push the new version, then tag v<version>
+#                                 and create a GitHub release with the DMG and zip
+#   ./release.sh --publish 1.1    the same, with a version you choose
+#
+# Publishing the project's current version (e.g. after deleting a release) works
+# too: pass that version explicitly. The build number is raised whenever the
+# version changes.
 #
 # One-time setup:
 #   1. Create a "Developer ID Application" certificate (only the team's Account
@@ -34,13 +42,33 @@ EXPORT_DIR="$OUT/export"
 APP="$EXPORT_DIR/$APP_NAME.app"
 
 PUBLISH=false
+REQUESTED_VERSION=""
 for arg in "$@"; do
     case "$arg" in
         --publish) PUBLISH=true ;;
-        -h|--help) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//'; exit 0 ;;
+        -h|--help) awk 'NR == 1 { next } /^#/ { sub(/^# ?/, ""); print; next } { exit }' "$0"; exit 0 ;;
+        [0-9]*)
+            [[ "$arg" =~ ^[0-9]+(\.[0-9]+){0,2}$ ]] || { echo "Invalid version: $arg (use e.g. 1.2 or 1.2.3)" >&2; exit 2; }
+            REQUESTED_VERSION="$arg" ;;
         *) echo "Unknown option: $arg (see --help)" >&2; exit 2 ;;
     esac
 done
+
+PROJECT_FILE="$PROJECT/project.xcproj"
+
+# 1.0 → 1.0.1, 1.0.1 → 1.0.2, 2 → 2.0.1
+bump_patch() {
+    local major minor patch
+    IFS=. read -r major minor patch <<<"$1"
+    echo "${major:-0}.${minor:-0}.$(( ${patch:-0} + 1 ))"
+}
+
+# Replaces every `"KEY": "old"` with `"KEY": "new"` in the project file.
+set_project_setting() {
+    local key="$1" old="$2" new="$3"
+    grep -q "\"$key\": \"$old\"" "$PROJECT_FILE" || fail "Couldn't find $key = $old in $PROJECT_FILE."
+    KEY="$key" OLD="$old" NEW="$new" perl -pi -e 's/"\Q$ENV{KEY}\E": "\Q$ENV{OLD}\E"/"$ENV{KEY}": "$ENV{NEW}"/g' "$PROJECT_FILE"
+}
 
 step() { printf '\n\033[1m==> %s\033[0m\n' "$*"; }
 fail() { printf '\033[31merror:\033[0m %s\n' "$*" >&2; exit 1; }
@@ -55,9 +83,23 @@ xcodebuild -version >/dev/null 2>&1 || fail "Xcode isn't selected. Run: sudo xco
 
 SETTINGS="$(xcodebuild -project "$PROJECT" -scheme "$SCHEME" -configuration Release -showBuildSettings 2>/dev/null)"
 setting() { awk -F' = ' -v key="$1" '$1 ~ "^ *"key"$" { print $2; exit }' <<<"$SETTINGS"; }
-VERSION="$(setting MARKETING_VERSION)"
+CURRENT_VERSION="$(setting MARKETING_VERSION)"
+CURRENT_BUILD="$(setting CURRENT_PROJECT_VERSION)"
 TEAM_ID="${TEAM_ID:-$(setting DEVELOPMENT_TEAM)}"
-[[ -n "$VERSION" ]] || fail "Couldn't read MARKETING_VERSION from the project."
+[[ -n "$CURRENT_VERSION" ]] || fail "Couldn't read MARKETING_VERSION from the project."
+[[ "$CURRENT_BUILD" =~ ^[0-9]+$ ]] || fail "CURRENT_PROJECT_VERSION should be a whole number, found '$CURRENT_BUILD'."
+
+if [[ -n "$REQUESTED_VERSION" ]]; then
+    VERSION="$REQUESTED_VERSION"
+elif $PUBLISH; then
+    VERSION="$(bump_patch "$CURRENT_VERSION")"
+else
+    VERSION="$CURRENT_VERSION"
+fi
+VERSION_CHANGED=false
+[[ "$VERSION" != "$CURRENT_VERSION" ]] && VERSION_CHANGED=true
+BUILD_NUMBER="$CURRENT_BUILD"
+$VERSION_CHANGED && BUILD_NUMBER=$((CURRENT_BUILD + 1))
 [[ -n "$TEAM_ID" ]] || fail "No team set. Choose a Team under Signing & Capabilities, or set TEAM_ID."
 
 IDENTITIES="$(security find-identity -v -p codesigning)"
@@ -76,11 +118,31 @@ if $PUBLISH; then
     [[ "$(git rev-parse HEAD)" == "$(git rev-parse '@{u}' 2>/dev/null)" ]] \
         || fail "This branch isn't in sync with GitHub. Pull or push first."
     if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
-        fail "Tag $TAG already exists. Raise MARKETING_VERSION in the project first."
+        fail "Tag $TAG already exists. Pass a newer version, e.g. ./release.sh --publish $(bump_patch "$VERSION")"
     fi
 fi
 
-echo "Version $VERSION, team $TEAM_ID, notary profile $NOTARY_PROFILE"
+echo "Version $VERSION (build $BUILD_NUMBER), team $TEAM_ID, notary profile $NOTARY_PROFILE"
+
+# --- Version ---------------------------------------------------------------
+
+# The new version is written to the project for the build. It is committed only
+# when publishing succeeds; otherwise the project file is put back as it was.
+VERSION_COMMITTED=false
+if $VERSION_CHANGED; then
+    step "Setting version $CURRENT_VERSION → $VERSION, build $CURRENT_BUILD → $BUILD_NUMBER"
+    PROJECT_BACKUP="$(mktemp)"
+    cp "$PROJECT_FILE" "$PROJECT_BACKUP"
+    restore_project() {
+        if ! $VERSION_COMMITTED; then
+            cp "$PROJECT_BACKUP" "$PROJECT_FILE"
+        fi
+        rm -f "$PROJECT_BACKUP"
+    }
+    trap restore_project EXIT
+    set_project_setting MARKETING_VERSION "$CURRENT_VERSION" "$VERSION"
+    set_project_setting CURRENT_PROJECT_VERSION "$CURRENT_BUILD" "$BUILD_NUMBER"
+fi
 
 # --- Build and sign --------------------------------------------------------
 
@@ -183,6 +245,13 @@ echo "  $ZIP"
 # --- Publish ---------------------------------------------------------------
 
 if $PUBLISH; then
+    if $VERSION_CHANGED; then
+        step "Committing version $VERSION"
+        git add "$PROJECT_FILE"
+        git commit --quiet -m "Release $TAG"
+        VERSION_COMMITTED=true
+        git push --quiet
+    fi
     step "Creating GitHub release $TAG"
     git tag "$TAG"
     git push --quiet origin "$TAG"

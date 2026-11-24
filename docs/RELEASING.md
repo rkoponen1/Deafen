@@ -2,11 +2,11 @@
 
 `release.sh` builds a release that opens on any Mac without Gatekeeper warnings:
 
-1. Archives the app and signs it with your **Developer ID** certificate.
+1. Raises the version, archives the app and signs it with your **Developer ID** certificate.
 2. Notarizes the app with Apple and staples the ticket.
 3. Builds a DMG with an Applications shortcut, signs, notarizes and staples it.
 4. Zips the app as well.
-5. With `--publish`, tags `v<version>` and creates a GitHub release with the DMG and zip attached.
+5. With `--publish`, commits and pushes the new version, tags `v<version>` and creates a GitHub release with the DMG and zip attached.
 
 The files end up in `build/release/`.
 
@@ -47,15 +47,21 @@ gh auth login
 
 ## Making a release
 
-1. Raise **Version** (`MARKETING_VERSION`) in the target's settings and commit it. The script refuses to reuse an existing tag.
-2. Push, so your branch matches GitHub.
-3. Run:
+Commit and push your changes, then run:
 
-   ```bash
-   ./release.sh --publish
-   ```
+```bash
+./release.sh --publish
+```
 
-Without `--publish` the script only builds the files, which is handy for testing.
+The script raises the last part of the version (1.0 → 1.0.1) and the build number, builds and notarizes, and only then commits the new version, pushes it and publishes. If anything fails along the way, the project file is put back as it was.
+
+To choose the version yourself, pass it:
+
+```bash
+./release.sh --publish 1.1
+```
+
+Without `--publish` the script only builds the files with the project's current version, which is handy for testing.
 
 Options are set with environment variables:
 
@@ -66,7 +72,7 @@ Options are set with environment variables:
 
 ## Redoing a release
 
-Delete the GitHub release and its tag, delete the local tag, then publish again:
+Delete the GitHub release and its tag, delete the local tag, then publish the same version again by passing it explicitly:
 
 ```bash
 gh release delete v1.0 --cleanup-tag --yes
@@ -74,6 +80,10 @@ gh release delete v1.0 --cleanup-tag --yes
 
 ```bash
 git tag -d v1.0
+```
+
+```bash
+./release.sh --publish 1.0
 ```
 
 Anyone who already downloaded the old files keeps a working app, but the old download links stop working. If the release has been shared, raise the version instead.
