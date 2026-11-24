@@ -32,14 +32,6 @@ Deafen creates a Core Audio [process tap](https://developer.apple.com/documentat
 
 ## Development
 
-| Folder | Contents |
-| --- | --- |
-| `Deafen/Audio` | Finding the apps' audio processes and silencing them |
-| `Deafen/HotKey` | The shortcut and global hotkey registration |
-| `Deafen/Model` | App state and saved preferences |
-| `Deafen/Views` | The menu bar panel |
-| `DeafenTests` | Unit tests (Swift Testing) |
-
 To publish a signed, notarized release, see [docs/RELEASING.md](docs/RELEASING.md).
 
 ## License
