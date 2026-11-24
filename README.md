@@ -32,8 +32,6 @@ Deafen creates a Core Audio [process tap](https://developer.apple.com/documentat
 
 ## Development
 
-Open `Deafen.xcodeproj` in Xcode 27 or later, choose your **Team** under the target's **Signing & Capabilities**, and press ⌘R. Run the tests with ⌘U.
-
 | Folder | Contents |
 | --- | --- |
 | `Deafen/Audio` | Finding the apps' audio processes and silencing them |
